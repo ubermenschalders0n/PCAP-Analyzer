@@ -1,5 +1,20 @@
 from scapy.all import *
 from optparse import OptionParser
+import socket
+
+#!!!!!!!!!!!!!!!!!!!!!!ASSUMPTIONS!!!!!!!!!!!!!!!!!!!!!!
+
+#HTTP traffic can be generated with UDP . I will not check if the http request has layers for TCP only. As some of the http traffic can be on UDP protocol.
+
+#3-Top hostname visited in HTTP traffic
+#there are couple of ways to solve this
+#3.1- Extract all IP addresses from the pcap file and do a reverse DNS lookup with sockets library
+#This can be problematic as IP addresses provided can be private IP addresses and when resolved to a host it will give back the wrong hostname
+#3.2- Look for DNS requests in the PCAP file and extract hostnames from DNS requests
+#I think this is not the solution you want , as HTTP traffic is explicitly wanted in the assignment 
+#3.3- Extract host header from packets
+#This will be the solution I am implementing, I will parse each packet and extract the host header value from the packet
+#The host value will be put inside hashmap(dictionary in python) and incremented each time the same host header value is found
 
 
 #this class will be the schema of our main class. If we want to update something we can update this abstract class
@@ -27,8 +42,8 @@ class concretePcapAnalyzer(pcapAnalyzerAbstract):
         print("Byte size for the pcap file is as follows :{} \n".format(self.byteSize)) if not self.byteSize==-1 else print("Byte size is empty , please start the analyzer first")   
     def printTopHostname(self):
         print("Byte size for the pcap file is as follows :{} \n".format(self.topHost)) if not self.topHost=="Empty" else print("Top hostname is empty , please start the analyzer first")
-    def __init__():
-        pass
+    def __init__(self,pathToPcap):
+        self.pathToPcap=pathToPcap
     def packetReader(self):
         try:
             self.packets=rdpcap(self.pathToPcap) if not self.pathToPcap=="Empty" else print("Path to pcap file is empty check your path")
@@ -53,8 +68,7 @@ class concretePcapAnalyzer(pcapAnalyzerAbstract):
                 httpFlows[(src, dst)] = 1
         #here we are counting number of HTTP flow count. If we wanted to count only the unique http flows we can just take the length of httpFlows dictionary          
         #self.flowCount=len(httpFlows)
-        #we will count all of the http flows for each unique src and dst IP address combination
-        
+        #we will count all of the http flows for each unique src and dst IP address combination        
         for val in httpFlows.values():
             numberOfFlows+=val
         self.flowCount=numberOfFlows
@@ -67,12 +81,29 @@ class concretePcapAnalyzer(pcapAnalyzerAbstract):
         # I have not truncated any packet size as assignment said total size of packets
         # I have found the solution for finding IPv6 packet length here ==> https://stackoverflow.com/questions/21752576/whole-packet-length-scapy
         for packet in self.packets:
-          if packet.haslayer(IPv6):
+          if packet.haslayer(IPv6) and packet.hasLayer("HTTP"):
               totalSize+=packet.plen
+          elif packet.hasLayer("HTTP"):
+              totalSize+=packet.len
           else:
-              totalSize+=packet.len               
+              #we are only counting http traffic so we will pass these packets
+              pass         
+    #host_header = http_layer.fields['Host']       
     def topHostname(self):
-        pass
+        print("The packets are empty please initialize it"); self.packetReader() if not self.packets else print("Analyzing the pcap file for finding top hostname")
+        hostsDict={}
+        for packet in self.packets:
+            host_header = packet.fields['Host']
+            if(packet.hasLayer("HTTP")):
+                if(host_header in hostsDict):
+                    hostsDict[host_header]+=1
+                else:
+                    hostsDict[host_header]=1
+            #we are only counting the http traffic so pass other packets that does not have http layer
+            else:
+                pass
+        #the host with the top value will assigned to our internal class variable
+        self.topHost=max(hostsDict,key=hostsDict.get)
     #default case for objects to have numOfFlows as -1 . The # of flows cannot be under 0, this will be used for testing whether the variable is started or not
     #and as python is different to java you cannot initialize variables without assigning them
     flowCount=-1
@@ -80,7 +111,9 @@ class concretePcapAnalyzer(pcapAnalyzerAbstract):
     byteSize=-1
     #default case for error handling
     topHost="Empty"
+    #default case for error handling , in python empty strings are falsy so I will use the inbuilt functionality of python
     packets=""
+    #default case for error handling
     pathToPcap="Empty"
     
 #the main class we will be using
@@ -91,3 +124,6 @@ def main():
     (options,args) = cliParser.parse_args()
     pcapPath=options.pcapPath
   
+  
+if __name__ == '__main__':
+    main()
