@@ -13,8 +13,8 @@ import sys
 #1-Number of flows in HTTP
 #For each unique destination IP address and source IP address I will create an element inside the hashmap
 #Each time this unique combination is found in the packets the value of the key value - pair will be incremented by one
-#The number of HTTP flows will be calculated by getting the value of each key and getting the sum of all the values
-#If we wanted to see only the count of unique src,dst combination we can just use the len() function and give it as result
+#The number of HTTP flows will be calculated by getting the unique number of keys in the dictionary with len() function
+#If we wanted we can just take sum of all values in the key-value pair and print it
 #3-Top hostname visited in HTTP traffic
 #there are couple of ways to solve this
 #3.1- Extract all IP addresses from the pcap file and do a reverse DNS lookup with sockets library
@@ -85,7 +85,7 @@ class pcapAnalyzerAbstract():
     def printTopHostname(self):
         pass
     
-    
+#our concrete class which every function is implemented 
 class concretePcapAnalyzer(pcapAnalyzerAbstract):
     #Give report will call the other functions and will double check if the variables are empty or not
     #error handling firstly in each class , for the integrity of software 
@@ -162,7 +162,7 @@ class concretePcapAnalyzer(pcapAnalyzerAbstract):
         #if it is not unique increment the existing count by one
         for packet in self.packets:
             flow=(packet['ip'].src,packet['ip'].dst,packet['tcp'].srcport,packet['tcp'].dstport)
-            # I have implemented 2 solutions to find number of http flows
+            # I have implemented 2 solutions to find number of http flows as explained at the start
             # First one only looks for src and dst IP addresses and if the combination is unique the packet is stored and number of packets having the same value 
             # will result incremented values for the unique combination in the key-value pair with each iteration.
             # number of flows can be counted as the sum of all the values in the dictionary
